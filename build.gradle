@@ -1,0 +1,118 @@
+configurations {
+    jaxb
+}
+buildscript{
+    repositories{
+        jcenter()
+        mavenCentral()
+    }
+    dependencies {
+        classpath ('org.springframework.boot:spring-boot-gradle-plugin:2.1.4.RELEASE', 'no.nils:wsdl2java:0.10')
+    }
+}
+
+apply plugin: "org.springframework.boot"
+apply plugin: "java"
+apply plugin: "war"
+apply plugin: "no.nils.wsdl2java"
+apply plugin: 'io.spring.dependency-management'
+
+
+group = 'com.web.bb.soap'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '1.8'
+targetCompatibility = '1.8'
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-data-rest'
+    implementation 'org.springframework.boot:spring-boot-starter-jersey'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-web-services'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    annotationProcessor 'org.projectlombok:lombok'
+    compile("wsdl4j:wsdl4j:1.6.1")
+    providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+    jaxb "com.sun.xml.bind:jaxb-xjc:2.1.7", "org.springframework.ws:spring-ws-core:2.1.4.RELEASE",
+            "org.springframework:spring-oxm:2.1.4.RELEASE", "org.springframework.boot:spring-boot-starter:2.1.4.RELEASE",
+            "org.springframework.boot:spring-boot-starter-tomcat:2.1.4.RELEASE",
+    "org.springframework.boot:spring-boot-starter-security:2.1.4.RELEASE"
+}
+
+wsdl2java {
+
+    wsdlDir = file("src/main/resources/wsdl")
+
+    generatedWsdlDir = file('src/generated/java')
+
+    def basePackage = "com.bb.generatedSoap"
+
+    wsdlsToGenerate = [
+            ['-p',"${basePackage}.courses", '-autoNameResolution',"$wsdlDir/courses.wsdl"]
+    ]
+    locale = Locale.getDefault()
+    stabilizeAndMergeObjectFactory = false
+
+}
+task genJaxb {
+    ext.sourcesDir = "${projectDir}/src/main/java"
+    ext.classesDir = "${buildDir}/classes"
+    outputs.dir classesDir
+
+    doLast() {
+        project.ant {
+
+            mkdir(dir: sourcesDir)
+            mkdir(dir: classesDir)
+
+            javac(destdir: classesDir,
+                    source: 1.8,
+                    target: 1.8,
+                    debug: true,
+                    debugLevel: "lines,vars,source",
+                    classpath: configurations.jaxb.asPath) {
+                src(path: sourcesDir)
+                include(name: "**/*.java")
+                include(name: "*.java")
+            }
+
+            copy(todir: classesDir) {
+                fileset(dir: sourcesDir, erroronmissingdir: false) {
+                    exclude(name: "**/*.java")
+                }
+            }
+        }
+    }
+}
+wsdl2javaExt {
+    cxfVersion = "2.5.1"
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs "src/main/java"
+            srcDirs "src/generated/java"
+        }
+    }
+    test {
+        java {
+            srcDirs "src/test/unit/java"
+        }
+    }
+}
+
+
